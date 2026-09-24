@@ -1,121 +1,158 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { Link, useNavigate } from 'react-router-dom'
 import {
-  fetchAuthors,
-  fetchByAuthor,
+  deleteBlueprint,
+  fetchAllBlueprints,
   fetchBlueprint,
+  fetchByAuthor,
 } from '../features/blueprints/blueprintsSlice.js'
+import {
+  selectAuthorBlueprints,
+  selectAuthorTotalPoints,
+  selectAuthors,
+  selectCurrentBlueprint,
+  selectRequest,
+  selectSelectedAuthor,
+} from '../features/blueprints/blueprintsSelectors.js'
+import { selectIsAuthenticated } from '../features/auth/authSlice.js'
 import BlueprintCanvas from '../components/BlueprintCanvas.jsx'
+import BlueprintList from '../components/BlueprintList.jsx'
+import RequestStatus from '../components/RequestStatus.jsx'
+import TopBlueprints from '../components/TopBlueprints.jsx'
 
 export default function BlueprintsPage() {
   const dispatch = useDispatch()
-  const { byAuthor, current, status } = useSelector((s) => s.blueprints)
-  const [authorInput, setAuthorInput] = useState('')
-  const [selectedAuthor, setSelectedAuthor] = useState('')
-  const items = byAuthor[selectedAuthor] || []
+  const navigate = useNavigate()
+  const selectedAuthor = useSelector(selectSelectedAuthor)
+  const items = useSelector(selectAuthorBlueprints)
+  const totalPoints = useSelector(selectAuthorTotalPoints)
+  const authors = useSelector(selectAuthors)
+  const current = useSelector(selectCurrentBlueprint)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const fetchAllRequest = useSelector(selectRequest('fetchAll'))
+  const byAuthorRequest = useSelector(selectRequest('fetchByAuthor'))
+  const blueprintRequest = useSelector(selectRequest('fetchBlueprint'))
+  const removeRequest = useSelector(selectRequest('remove'))
+  const [authorInput, setAuthorInput] = useState(selectedAuthor)
 
   useEffect(() => {
-    dispatch(fetchAuthors())
-  }, [dispatch])
+    dispatch(fetchAllBlueprints())
+  }, [dispatch, isAuthenticated])
 
-  const totalPoints = useMemo(
-    () => items.reduce((acc, bp) => acc + (bp.points?.length || 0), 0),
-    [items],
-  )
-
-  const getBlueprints = () => {
-    if (!authorInput) return
-    setSelectedAuthor(authorInput)
-    dispatch(fetchByAuthor(authorInput))
+  const searchAuthor = (author) => {
+    const value = author.trim()
+    if (!value) return
+    setAuthorInput(value)
+    dispatch(fetchByAuthor(value))
   }
 
-  const openBlueprint = (bp) => {
-    dispatch(fetchBlueprint({ author: bp.author, name: bp.name }))
+  const openBlueprint = (bp) => dispatch(fetchBlueprint({ author: bp.author, name: bp.name }))
+  const editBlueprint = (bp) =>
+    navigate(`/blueprints/${encodeURIComponent(bp.author)}/${encodeURIComponent(bp.name)}/edit`)
+  const removeBlueprint = (bp) => {
+    if (window.confirm(`¿Eliminar el blueprint "${bp.name}"?`)) {
+      dispatch(deleteBlueprint({ author: bp.author, name: bp.name }))
+    }
   }
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: '1.1fr 1.4fr', gap: 24 }}>
-      <section className="grid" style={{ gap: 16 }}>
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Blueprints</h2>
-          <div style={{ display: 'flex', gap: 12 }}>
+    <div className="grid gap-6 lg:grid-cols-[1fr_1.25fr]">
+      <section className="space-y-6">
+        <div className="card space-y-4">
+          <h2 className="text-xl font-semibold text-slate-100">Blueprints</h2>
+          <form
+            className="flex gap-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              searchAuthor(authorInput)
+            }}
+          >
             <input
               className="input"
               placeholder="Author"
+              aria-label="Author"
               value={authorInput}
               onChange={(e) => setAuthorInput(e.target.value)}
             />
-            <button className="btn primary" onClick={getBlueprints}>
+            <button type="submit" className="btn btn-primary shrink-0">
               Get blueprints
             </button>
-          </div>
-        </div>
-
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>
-            {selectedAuthor ? `${selectedAuthor}'s blueprints:` : 'Results'}
-          </h3>
-          {status === 'loading' && <p>Cargando...</p>}
-          {!items.length && status !== 'loading' && <p>Sin resultados.</p>}
-          {!!items.length && (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th
-                      style={{
-                        textAlign: 'left',
-                        padding: '8px',
-                        borderBottom: '1px solid #334155',
-                      }}
-                    >
-                      Blueprint name
-                    </th>
-                    <th
-                      style={{
-                        textAlign: 'right',
-                        padding: '8px',
-                        borderBottom: '1px solid #334155',
-                      }}
-                    >
-                      Number of points
-                    </th>
-                    <th style={{ padding: '8px', borderBottom: '1px solid #334155' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((bp) => (
-                    <tr key={bp.name}>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #1f2937' }}>
-                        {bp.name}
-                      </td>
-                      <td
-                        style={{
-                          padding: '8px',
-                          textAlign: 'right',
-                          borderBottom: '1px solid #1f2937',
-                        }}
-                      >
-                        {bp.points?.length || 0}
-                      </td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #1f2937' }}>
-                        <button className="btn" onClick={() => openBlueprint(bp)}>
-                          Open
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          </form>
+          {!!authors.length && (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-slate-400">Autores:</span>
+              {authors.map((author) => (
+                <button
+                  key={author}
+                  className={`btn btn-sm ${author === selectedAuthor ? 'btn-primary' : ''}`}
+                  onClick={() => searchAuthor(author)}
+                >
+                  {author}
+                </button>
+              ))}
             </div>
           )}
-          <p style={{ marginTop: 12, fontWeight: 700 }}>Total user points: {totalPoints}</p>
+          <RequestStatus request={fetchAllRequest} loadingText="Cargando catálogo..." />
         </div>
+
+        <div className="card space-y-3">
+          <h3 className="text-lg font-semibold text-slate-100">
+            {selectedAuthor ? `${selectedAuthor}'s blueprints:` : 'Results'}
+          </h3>
+          <RequestStatus request={byAuthorRequest} loadingText="Consultando planos..." />
+          <RequestStatus
+            request={removeRequest}
+            errorPrefix="No se pudo eliminar (cambio revertido): "
+          />
+          {selectedAuthor && (
+            <BlueprintList
+              items={items}
+              canEdit={isAuthenticated}
+              onOpen={openBlueprint}
+              onEdit={editBlueprint}
+              onDelete={removeBlueprint}
+            />
+          )}
+          <p className="pt-1 font-semibold text-slate-100">Total user points: {totalPoints}</p>
+        </div>
+
+        <TopBlueprints onOpen={openBlueprint} />
       </section>
 
-      <section className="card">
-        <h3 style={{ marginTop: 0 }}>Current blueprint: {current?.name || '—'}</h3>
-        <BlueprintCanvas points={current?.points || []} />
+      <section className="card space-y-4 self-start">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-48 flex-1">
+            <label htmlFor="current-blueprint" className="label">
+              Current blueprint
+            </label>
+            <input
+              id="current-blueprint"
+              className="input"
+              readOnly
+              value={current?.name ?? ''}
+              placeholder="—"
+            />
+          </div>
+          {current && (
+            <div className="flex gap-2">
+              <Link
+                className="btn"
+                to={`/blueprints/${encodeURIComponent(current.author)}/${encodeURIComponent(current.name)}`}
+              >
+                Detalle
+              </Link>
+              {isAuthenticated && (
+                <button className="btn" onClick={() => editBlueprint(current)}>
+                  Editar
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {current && <p className="text-sm text-slate-400">Autor: {current.author}</p>}
+        <RequestStatus request={blueprintRequest} loadingText="Cargando plano..." />
+        <BlueprintCanvas id="blueprint-canvas" points={current?.points ?? []} />
       </section>
     </div>
   )

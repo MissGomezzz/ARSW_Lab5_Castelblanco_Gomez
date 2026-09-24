@@ -1,38 +1,61 @@
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { fetchBlueprint } from '../features/blueprints/blueprintsSlice.js'
+import {
+  pointCount,
+  selectBlueprint,
+  selectRequest,
+} from '../features/blueprints/blueprintsSelectors.js'
+import { selectIsAuthenticated } from '../features/auth/authSlice.js'
+import BlueprintCanvas from '../components/BlueprintCanvas.jsx'
+import RequestStatus from '../components/RequestStatus.jsx'
 
 export default function BlueprintDetailPage() {
   const { author, name } = useParams()
   const dispatch = useDispatch()
-  const bp = useSelector((s) => s.blueprints.current)
+  const bp = useSelector(selectBlueprint(author, name))
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const fetchRequest = useSelector(selectRequest('fetchBlueprint'))
+  const updateRequest = useSelector(selectRequest('update'))
 
+  const isLoaded = Boolean(bp)
+
+  // Only fetch when missing: a GET racing an in-flight optimistic PUT could restore stale points.
   useEffect(() => {
-    dispatch(fetchBlueprint({ author, name }))
-  }, [author, name, dispatch])
-
-  if (!bp)
-    return (
-      <div className="card">
-        <p>Cargando...</p>
-      </div>
-    )
+    if (!isLoaded) dispatch(fetchBlueprint({ author, name }))
+  }, [isLoaded, author, name, dispatch])
 
   return (
-    <div className="card">
-      <h2 style={{ marginTop: 0 }}>{bp.name}</h2>
-      <p>
-        <strong>Autor:</strong> {bp.author}
-      </p>
-      <p>
-        <strong>Puntos:</strong> {bp.points?.length || 0}
-      </p>
-      <svg width="400" height="200" style={{ background: '#0b1220', borderRadius: 12 }}>
-        {bp.points?.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="4" />
-        ))}
-      </svg>
+    <div className="card mx-auto max-w-3xl space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold text-slate-100">{name}</h2>
+          <p className="text-sm text-slate-400">
+            Autor: {author} · Puntos: {bp ? pointCount(bp) : '—'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link className="btn" to="/">
+            Volver
+          </Link>
+          {isAuthenticated && bp && (
+            <Link
+              className="btn btn-primary"
+              to={`/blueprints/${encodeURIComponent(author)}/${encodeURIComponent(name)}/edit`}
+            >
+              Editar
+            </Link>
+          )}
+        </div>
+      </div>
+      <RequestStatus
+        request={updateRequest}
+        loadingText="Guardando cambios..."
+        errorPrefix="No se pudo guardar (cambios revertidos): "
+      />
+      {!bp && <RequestStatus request={fetchRequest} loadingText="Cargando plano..." />}
+      <BlueprintCanvas id="blueprint-detail-canvas" points={bp?.points ?? []} />
     </div>
   )
 }

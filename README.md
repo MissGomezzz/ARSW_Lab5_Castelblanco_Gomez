@@ -18,13 +18,19 @@ Ver la especificación de glosario clave, consulta las [Definiciones del laborat
 
 ## Endpoints esperados (ajústalos si tu backend quedo diferente)
 
-- `GET /api/blueprints` → lista general o catálogo para derivar autores.
-- `GET /api/blueprints/{author}`
-- `GET /api/blueprints/{author}/{name}`
-- `POST /api/blueprints` (requiere JWT)
-- `POST /api/auth/login` → `{ token }`
+Endpoints reales del backend del Lab 4 (todos los de `/api/v1` requieren JWT):
 
-Configura la URL base en `.env`.
+- `GET /api/v1/blueprints` → lista general o catálogo para derivar autores.
+- `GET /api/v1/blueprints/{author}`
+- `GET /api/v1/blueprints/{author}/{name}`
+- `POST /api/v1/blueprints` (scope `blueprints.write`)
+- `PUT /api/v1/blueprints/{author}/{name}` → `{ points }` (scope `blueprints.write`)
+- `DELETE /api/v1/blueprints/{author}/{name}` (scope `blueprints.write`)
+- `POST /auth/login` → `{ access_token, token_type, expires_in }`
+
+Las respuestas de `/api/v1` vienen envueltas en `{ code, message, data }`.
+
+Configura el modo (mock o API real) en `.env`.
 
 ## Cómo arrancar
 
@@ -39,11 +45,17 @@ Abre `http://localhost:5173`
 
 ## Variables de entorno
 
-Crea un archivo `.env` en la raíz:
+Crea un archivo `.env` en la raíz (ver `.env.example`):
 
 ```variable
-VITE_API_BASE_URL=http://localhost:8080/api
+VITE_USE_MOCK=true
+VITE_API_BASE_URL=
+VITE_BACKEND_URL=http://localhost:8080
 ```
+
+- `VITE_USE_MOCK`: `true` usa `apimock` (sin backend); `false` usa `apiclient` contra el API real.
+- `VITE_API_BASE_URL`: vacío para pasar por el _proxy_ de Vite (mismo origen, sin problemas de CORS).
+- `VITE_BACKEND_URL`: backend al que el _proxy_ de Vite reenvía `/api` y `/auth`.
 
 > **Tip:** en producción usa variables seguras o un _reverse proxy_.
 
@@ -137,16 +149,16 @@ VITE_USE_MOCK=true
 ## 📌 Recomendaciones y actividades sugeridas para el exito del laboratorio
 
 1. **Redux avanzado**
-   - [ ] Agrega estados `loading/error` por _thunk_ y muéstralos en la UI.
-   - [ ] Implementa _memo selectors_ para derivar el top-5 de blueprints por cantidad de puntos.
+   - [x] Agrega estados `loading/error` por _thunk_ y muéstralos en la UI.
+   - [x] Implementa _memo selectors_ para derivar el top-5 de blueprints por cantidad de puntos.
 2. **Rutas protegidas**
-   - [ ] Crea un componente `<PrivateRoute>` y protege la creación/edición.
+   - [x] Crea un componente `<PrivateRoute>` y protege la creación/edición.
 3. **CRUD completo**
-   - [ ] Implementa `PUT /api/blueprints/{author}/{name}` y `DELETE ...` en el slice y en la UI.
-   - [ ] Optimistic updates (revertir si falla).
+   - [x] Implementa `PUT /api/blueprints/{author}/{name}` y `DELETE ...` en el slice y en la UI.
+   - [x] Optimistic updates (revertir si falla).
 4. **Dibujo interactivo**
-   - [ ] Reemplaza el `svg` por un lienzo donde el usuario haga _click_ para agregar puntos.
-   - [ ] Botón “Guardar” que envíe el blueprint.
+   - [x] Reemplaza el `svg` por un lienzo donde el usuario haga _click_ para agregar puntos.
+   - [x] Botón “Guardar” que envíe el blueprint.
 5. **Errores y _Retry_**
    - [ ] Si `GET` falla, muestra un banner y un botón **Reintentar** que dispare el thunk.
 6. **Testing**
@@ -184,3 +196,24 @@ VITE_USE_MOCK=true
 - **Dark mode** y diseño responsive.
 
 > Este proyecto es un punto de partida para que tus estudiantes evolucionen el cliente clásico de Blueprints a una SPA moderna con prácticas de la industria.
+
+---
+
+## Respuestas
+
+### Requerimientos del laboratorio (1 a 7)
+
+1. **Canvas**: `BlueprintCanvas` dibuja sobre un `<canvas>` de `520×360` con identificador propio (`id="blueprint-canvas"` en la vista principal).
+2. **Planos de un autor**: se ingresa el autor (o se elige de la lista de autores) y se muestran sus planos en una tabla con nombre, número de puntos y botón `Open`, más el total de puntos del autor.
+3. **Seleccionar y graficar**: `Open` consulta el plano en el backend, actualiza el campo de texto `Current blueprint` y dibuja los segmentos consecutivos marcando cada punto.
+4. **Servicios**: `services/apiMock.js` (datos en memoria) y `services/apiClient.js` (Axios + interceptores JWT) exponen la misma interfaz (`getAll`, `getByAuthor`, `getByAuthorAndName`, `create`, además de `update`, `remove` y `login`). `services/blueprintsService.js` elige uno u otro en una sola línea según `VITE_USE_MOCK`.
+5. **React + Redux**: el plano actual vive en el estado global (`currentKey` del slice) y la UI se construye solo con componentes, props y estado, sin manipular el DOM.
+6. **Estilos**: toda la interfaz usa **Tailwind CSS v4** (plugin `@tailwindcss/vite`).
+7. **Pruebas**: Vitest + Testing Library cubren el render del canvas, el envío del formulario, el flujo de consultar un autor y abrir un plano con Redux, el slice, el `apimock` y `PrivateRoute`.
+
+### Recomendaciones 1 a 4
+
+1. **Redux avanzado**: cada _thunk_ tiene su propio estado `loading/error` en `state.blueprints.requests`, que se muestra en la UI con `RequestStatus`. El top-5 por número de puntos se deriva con un _memo selector_ (`createSelector`) en `blueprintsSelectors.js`.
+2. **Rutas protegidas**: `<PrivateRoute>` redirige a `/login` si no hay sesión y protege la creación (`/blueprints/new`) y la edición (`/blueprints/:author/:name/edit`). Tras el login se regresa a la ruta solicitada.
+3. **CRUD completo**: se agregaron al backend del Lab 4 los endpoints `PUT /api/v1/blueprints/{author}/{name}` y `DELETE /api/v1/blueprints/{author}/{name}` (scope `blueprints.write`), y los _thunks_ `updateBlueprint` y `deleteBlueprint` con sus botones en la UI. Ambos son **optimistas**: el cambio se aplica de inmediato, se guarda una copia y, si el backend falla, se revierte y se muestra el error.
+4. **Dibujo interactivo**: el `svg` del detalle se reemplazó por el canvas. En crear y editar, cada _click_ sobre el lienzo agrega un punto (con opciones de deshacer y limpiar), y el botón **Guardar** envía el blueprint al backend.
