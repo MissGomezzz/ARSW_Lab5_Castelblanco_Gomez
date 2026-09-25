@@ -310,7 +310,22 @@ Acá los cambios que se realizaron a nivel de código para poder obtener dicha c
 
 
 ### 7. CI/Lint/Format
+Acá se activó el GutHub actions con su workflow correspondiente para mirar la parte de despliegue e integración continua. 
+Primero para revisar que todos los componentes funcionan de forma correcta y no hay errores de ningún tipo, se utilizan los comandos 
 
+```bash
+ npm run lint
+```
+
+y 
+```bash
+ npm run build
+```
+Al ver que estos no muestran errores, subimos lo que tenemos, en donde en este caso se trabaja directamente en la rama de main al no haber problemas de trabajo en paralelo con otra persona. 
+
+A continuación se muestra la ejecución de dichos comandos con su commit y push: 
+
+![before-actions](/src/img/before-actions.png)
 
 
 ### 8. Docker (opcional)
