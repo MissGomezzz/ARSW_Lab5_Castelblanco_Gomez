@@ -257,13 +257,11 @@ A continuación se muestran los resultados, antes y después de haber escrito un
 
 ![before-retry](/src/img/before-retry.png)
 
-Acá se escribe "hello" como el autor de la pieza de blueprints, el cual nos genera un error para poder 
+Acá se escribe "hello" como el autor de la pieza de blueprints, el cual nos genera un error para poder probar el botón **Reintentar**. Luego se escribe un autor que sí está registrado y, al reintentar, la consulta se ejecuta correctamente:
 
 
 ![after-retry](/src/img/after-retry.png)
 
-
-Asimismo, en este pantallazo también es posible evidenciar los cambios realizados en los puntos 1,2,3 y 4, ya que se pueden ver los siguientes elementos: 
 
 Asimismo, en este pantallazo también es posible evidenciar los cambios realizados en los
 puntos 1, 2, 3 y 4, ya que se puede ver:
@@ -310,7 +308,7 @@ Acá los cambios que se realizaron a nivel de código para poder obtener dicha c
 
 
 ### 7. CI/Lint/Format
-Acá se activó el GutHub actions con su workflow correspondiente para mirar la parte de despliegue e integración continua. 
+Acá se activó GitHub Actions con su workflow correspondiente para mirar la parte de despliegue e integración continua. 
 Primero para revisar que todos los componentes funcionan de forma correcta y no hay errores de ningún tipo, se utilizan los comandos 
 
 ```bash
@@ -350,7 +348,7 @@ Para poder hacer la conexión entre el repositorio del back [Laboratorio 4 - Blu
 
 - InMemoryBlueprintPersistence.java: se actualizaron los datos iniciales almacenados en memoria para que coincidieran con los datos que originalmente estaban definidos en el apiMock.js del frontend.
 
-- schema.sql: se actualizaron los datos iniciales de PostgreSQL para incluir los mismos seis blueprints definidos originalmente en el mock del frontend, así los datos mostrados son los mismos que se tenían cuando la aplicación utilizaba datos mockeados.
+- schema.sql: se actualizaron los datos iniciales de PostgreSQL para incluir los mismos seis blueprints definidos originalmente en el mock del frontend, así los datos mostrados son los mismos que se tenían cuando la aplicación utilizaba datos mockeados. Como el script usa `ON CONFLICT DO NOTHING`, si el volumen de PostgreSQL ya tenía los datos viejos hay que recrearlo con `docker compose down -v` para que se carguen los nuevos.
 
 **Frontend:**
 
@@ -372,7 +370,7 @@ Esto hace que el frontend deje de utilizar `apiMock.js` y utilice `apiClient.js`
 De esta forma, después de correr el siguiente comando desde el front, se ven los siguientes cambios: 
 
 ```bash
-docker compose --build
+docker compose up --build
 ```
 
 ![connection-before](/src/img/connection-before.png)

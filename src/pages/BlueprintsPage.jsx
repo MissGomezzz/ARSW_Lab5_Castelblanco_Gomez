@@ -37,7 +37,6 @@ export default function BlueprintsPage() {
   const [authorInput, setAuthorInput] = useState(selectedAuthor)
   const [lastOpened, setLastOpened] = useState(null)
 
-
   useEffect(() => {
     dispatch(fetchAllBlueprints())
   }, [dispatch, isAuthenticated])
