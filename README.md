@@ -201,7 +201,7 @@ VITE_USE_MOCK=true
 
 ## Respuestas
 
-### Requerimientos del laboratorio (1 a 7)
+### Requerimientos del laboratorio 
 
 1. **Canvas**: `BlueprintCanvas` dibuja sobre un `<canvas>` de `520×360` con identificador propio (`id="blueprint-canvas"` en la vista principal).
 2. **Planos de un autor**: se ingresa el autor (o se elige de la lista de autores) y se muestran sus planos en una tabla con nombre, número de puntos y botón `Open`, más el total de puntos del autor.
@@ -211,9 +211,115 @@ VITE_USE_MOCK=true
 6. **Estilos**: toda la interfaz usa **Tailwind CSS v4** (plugin `@tailwindcss/vite`).
 7. **Pruebas**: Vitest + Testing Library cubren el render del canvas, el envío del formulario, el flujo de consultar un autor y abrir un plano con Redux, el slice, el `apimock` y `PrivateRoute`.
 
-### Recomendaciones 1 a 4
+## Puntos 
 
-1. **Redux avanzado**: cada _thunk_ tiene su propio estado `loading/error` en `state.blueprints.requests`, que se muestra en la UI con `RequestStatus`. El top-5 por número de puntos se deriva con un _memo selector_ (`createSelector`) en `blueprintsSelectors.js`.
-2. **Rutas protegidas**: `<PrivateRoute>` redirige a `/login` si no hay sesión y protege la creación (`/blueprints/new`) y la edición (`/blueprints/:author/:name/edit`). Tras el login se regresa a la ruta solicitada.
-3. **CRUD completo**: se agregaron al backend del Lab 4 los endpoints `PUT /api/v1/blueprints/{author}/{name}` y `DELETE /api/v1/blueprints/{author}/{name}` (scope `blueprints.write`), y los _thunks_ `updateBlueprint` y `deleteBlueprint` con sus botones en la UI. Ambos son **optimistas**: el cambio se aplica de inmediato, se guarda una copia y, si el backend falla, se revierte y se muestra el error.
-4. **Dibujo interactivo**: el `svg` del detalle se reemplazó por el canvas. En crear y editar, cada _click_ sobre el lienzo agrega un punto (con opciones de deshacer y limpiar), y el botón **Guardar** envía el blueprint al backend.
+### 1. Redux avanzado
+
+Cada _thunk_ tiene su propio estado `loading/error` en `state.blueprints.requests`, que se muestra en la UI con `RequestStatus`. El top-5 por número de puntos se deriva con un _memo selector_ (`createSelector`) en `blueprintsSelectors.js`.
+
+
+### 2. Rutas protegidas 
+`<PrivateRoute>` redirige a `/login` si no hay sesión y protege la creación (`/blueprints/new`) y la edición (`/blueprints/:author/:name/edit`). Tras el login se regresa a la ruta solicitada.
+
+
+### 3. CRUD completo
+Se agregaron al backend del Lab 4 los endpoints `PUT /api/v1/blueprints/{author}/{name}` y `DELETE /api/v1/blueprints/{author}/{name}` (scope `blueprints.write`), y los _thunks_ `updateBlueprint` y `deleteBlueprint` con sus botones en la UI. Ambos son **optimistas**: el cambio se aplica de inmediato, se guarda una copia y, si el backend falla, se revierte y se muestra el error.
+
+
+### 4. Dibujo interactivo
+El `svg` del detalle se reemplazó por el canvas. En crear y editar, cada _click_ sobre el lienzo agrega un punto (con opciones de deshacer y limpiar), y el botón **Guardar** envía el blueprint al backend.
+
+
+### 5. Errores y Retry
+
+Para esta sección se pide que, si se llega a escribir un autor que no está registrado (en este caso mockeado), que aparezca un error, y asimismo que dé la opción de reintentar, es decir, escribir un autor que sí esté registrado. 
+
+Los cambios que se realizaron a nivel de código fueron: 
+
+- En `src/components/RequestStatus.jsx` se agregó la prop opcional `onRetry`. Cuando el
+   estado de la petición es `failed`, además del mensaje de error, se renderiza un botón
+   **"Reintentar"** que ejecuta el callback recibido.
+- En `src/pages/BlueprintsPage.jsx` se agregó el estado `lastOpened` (con `useState`),
+   que guarda el último `{author, name}` consultado con el botón `Open`, para poder
+   reintentar esa misma consulta si llega a fallar.
+- Se conectó `onRetry` a cada `RequestStatus` de la página, para que cada banner de
+   error dispare de nuevo el thunk correspondiente:
+   - `fetchAllRequest` → vuelve a ejecutar `fetchAllBlueprints()`.
+   - `byAuthorRequest` → vuelve a ejecutar `fetchByAuthor(authorInput)`, usando el
+      texto que esté en ese momento en el campo "Author".
+   - `blueprintRequest` → vuelve a ejecutar `fetchBlueprint(lastOpened)`.
+- No fue necesario modificar el slice de Redux (`blueprintsSlice.js`) ni los servicios,
+   ya que el estado `loading/error` por *thunk* ya existía; solo faltaba exponer una
+   forma de re-disparar la acción desde la UI.
+
+A continuación se muestran los resultados, antes y después de haber escrito un autor que sí está registrado. 
+
+
+![before-retry](/src/img/before-retry.png)
+
+Acá se escribe "hello" como el autor de la pieza de blueprints, el cual nos genera un error para poder 
+
+
+![after-retry](/src/img/after-retry.png)
+
+
+Asimismo, en este pantallazo también es posible evidenciar los cambios realizados en los puntos 1,2,3 y 4, ya que se pueden ver los siguientes elementos: 
+
+Asimismo, en este pantallazo también es posible evidenciar los cambios realizados en los
+puntos 1, 2, 3 y 4, ya que se puede ver:
+
+1. **Canvas**: en la sección derecha, bajo "Current blueprint", se observa el lienzo (`BlueprintCanvas`) ya renderizado con su grilla de fondo, en las dimensiones definidas (520×360).
+
+2. **Listar los planos de un autor**: en la sección izquierda se ve el campo de texto "Author" junto con el botón "Get blueprints", que es la interfaz para consultar los planos de un autor específico; y debajo, las tarjetas "Results" (con el total de puntos del autor) y "Top 5 por número de puntos". 
+
+3. **Seleccionar un plano y graficarlo**: el campo "Current blueprint" (arriba a la derecha) es el que se actualiza con el nombre del plano seleccionado al presionar "Open" en la tabla, y está directamente ligado al canvas debajo de él: cuando se carga un plano, este campo muestra su nombre y el canvas dibuja sus puntos.
+
+4. **Servicios `apimock`/`apiclient`**: la etiqueta verde superior "Servicio: apiclient (API REST)" confirma visualmente cuál de los dos servicios está activo en ese momento según la variable `VITE_USE_MOCK` del `.env`.
+
+### 6. Testing
+
+Acá nos piden implementar tests de reducers puros junto con las pruebas de componentes con Testing Library. 
+
+A continuación se muestran los resultados de los tests, después de escribir el comando: 
+
+```bash
+ npm test
+```
+
+![tests-from-terminal](/src/img/tests-cmd.png)
+
+Acá los cambios que se realizaron a nivel de código para poder obtener dicha cantidad de pruebas (y que pasaran), son los siguientes: 
+
+- **`tests/authSlice.test.jsx` (nuevo archivo)**: pruebas del slice de autenticación
+   (reducer puro), cubriendo los tres estados del thunk `login`:
+   - `login.pending` deja `status: 'loading'` y limpia el error.
+   - `login.fulfilled` guarda el `token` y el `username` en el estado.
+   - `login.rejected` guarda el mensaje de error en `state.error`.
+
+- **`tests/BlueprintsPage.test.jsx` (se agregó un caso nuevo)**: prueba de
+   integración para el flujo de "Errores y Retry" del punto 5:
+   - Se simula que `getByAuthor` falla la primera vez y responde correctamente
+      la segunda (`mockRejectedValueOnce` + `mockResolvedValueOnce`).
+   - Se verifica que, tras el fallo, aparece el banner de error.
+   - Se simula el click en el botón "Reintentar" y se verifica que la tabla
+      carga los datos correctamente en el segundo intento, usando `within(table)`
+      para evitar ambigüedad con el mismo nombre de blueprint que aparece también
+      en la sección "Top 5 por número de puntos".
+   - Se confirma que `getByAuthor` fue invocado exactamente 2 veces (una fallida,
+      una exitosa por el retry).
+
+
+### 7. CI/Lint/Format
+
+
+
+### 8. Docker (opcional)
+
+
+
+**Nota**: debido a la falta de conocimiento en el manejo de desarrollo en el Front-End, algunas partes de código fueron guiadas por Claude, así como la documentación de los cambios realizados para mayor entendimiento. 
+
+
+--- 
+
+

@@ -85,4 +85,19 @@ describe('BlueprintsPage', () => {
 
     expect(await screen.findByText('No blueprints for author: nobody')).toBeInTheDocument()
   })
+  it('reintenta la consulta al hacer click en Reintentar', async () => {
+    blueprintsService.getByAuthor
+      .mockRejectedValueOnce(new Error('falló'))
+      .mockResolvedValueOnce([house])
+    renderPage()
+
+    fireEvent.change(screen.getByPlaceholderText(/Author/i), { target: { value: 'john' } })
+    fireEvent.click(screen.getByRole('button', { name: /Get blueprints/i }))
+    await screen.findByText('falló')
+
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/i }))
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText('house')).toBeInTheDocument()
+    expect(blueprintsService.getByAuthor).toHaveBeenCalledTimes(2)
+  })
 })

@@ -35,6 +35,8 @@ export default function BlueprintsPage() {
   const blueprintRequest = useSelector(selectRequest('fetchBlueprint'))
   const removeRequest = useSelector(selectRequest('remove'))
   const [authorInput, setAuthorInput] = useState(selectedAuthor)
+  const [lastOpened, setLastOpened] = useState(null)
+
 
   useEffect(() => {
     dispatch(fetchAllBlueprints())
@@ -47,7 +49,10 @@ export default function BlueprintsPage() {
     dispatch(fetchByAuthor(value))
   }
 
-  const openBlueprint = (bp) => dispatch(fetchBlueprint({ author: bp.author, name: bp.name }))
+  const openBlueprint = (bp) => {
+    setLastOpened({ author: bp.author, name: bp.name })
+    dispatch(fetchBlueprint({ author: bp.author, name: bp.name }))
+  }
   const editBlueprint = (bp) =>
     navigate(`/blueprints/${encodeURIComponent(bp.author)}/${encodeURIComponent(bp.name)}/edit`)
   const removeBlueprint = (bp) => {
@@ -93,14 +98,29 @@ export default function BlueprintsPage() {
               ))}
             </div>
           )}
-          <RequestStatus request={fetchAllRequest} loadingText="Cargando catálogo..." />
+          <RequestStatus
+            request={fetchAllRequest}
+            loadingText="Cargando catálogo..."
+            onRetry={() => dispatch(fetchAllBlueprints())}
+          />
+
+          <RequestStatus
+            request={byAuthorRequest}
+            loadingText="Consultando planos..."
+            onRetry={() => searchAuthor(authorInput)}
+          />
+
+          <RequestStatus
+            request={blueprintRequest}
+            loadingText="Cargando plano..."
+            onRetry={() => lastOpened && dispatch(fetchBlueprint(lastOpened))}
+          />
         </div>
 
         <div className="card space-y-3">
           <h3 className="text-lg font-semibold text-slate-100">
             {selectedAuthor ? `${selectedAuthor}'s blueprints:` : 'Results'}
           </h3>
-          <RequestStatus request={byAuthorRequest} loadingText="Consultando planos..." />
           <RequestStatus
             request={removeRequest}
             errorPrefix="No se pudo eliminar (cambio revertido): "
@@ -151,7 +171,6 @@ export default function BlueprintsPage() {
           )}
         </div>
         {current && <p className="text-sm text-slate-400">Autor: {current.author}</p>}
-        <RequestStatus request={blueprintRequest} loadingText="Cargando plano..." />
         <BlueprintCanvas id="blueprint-canvas" points={current?.points ?? []} />
       </section>
     </div>
