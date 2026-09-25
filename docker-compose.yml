@@ -1,14 +1,17 @@
 version: '3.9'
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_USE_MOCK: "false"
+        VITE_API_BASE_URL: "http://localhost:8080"
     ports:
       - '5173:4173'
-    environment:
-      - VITE_API_BASE_URL=http://backend:8080/api
     depends_on:
       - backend
   backend:
-    image: ghcr.io/your-org/blueprints-backend:latest
+    build:
+      context: ../Lab4_Castelblanco_Gomez
     ports:
       - '8080:8080'

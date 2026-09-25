@@ -327,14 +327,71 @@ A continuación se muestra la ejecución de dichos comandos con su commit y push
 
 ![before-actions](/src/img/before-actions.png)
 
+Después de estos comandos, se miró la página de Actions del repositorio, en donde me pedía habilitar mis workflows, le di click y esperamos algunos minutos a que se habilitara el workflow. Acá primero se mostró en amarillo el workflow basado en el último commit. A los pocos segundos, este se volvió verde, como se muestra a continuación: 
+
+![green-workflow](/src/img/green-workflow.png)
+
+Al darle click a este workflow, se pueden ver los siguientes detalles del worflow: 
+
+![workflow-details](/src/img/workflow-details.png)
+
+En adición, es posible ver un chulo verde al lado del nombre del último commit, en la pestaña de Code. 
+
 
 ### 8. Docker (opcional)
 
+**Nota**: Este punto fue apoyado en gran medida por Claude y ChatGPT, pues la cantidad de archivos que tocó modificar a nivel de back y front tanto para conservar los SEEDS del mock como para lograr la conexión exitosa es de alta complejidad. 
 
+Para poder hacer la conexión entre el repositorio del back [Laboratorio 4 - BluePrints Backend](https://github.com/Queruubin/Lab4_Castelblanco_Gomez), fue necesario editar los siguientes elementos: 
 
+**Backend:**
+
+- SecurityConfig.java: se configuró CORS para permitir que el frontend, ejecutándose en el puerto 5173, pueda realizar peticiones al backend, que continúa ejecutándose en el puerto 8080. 
+
+- InMemoryBlueprintPersistence.java: se actualizaron los datos iniciales almacenados en memoria para que coincidieran con los datos que originalmente estaban definidos en el apiMock.js del frontend.
+
+- schema.sql: se actualizaron los datos iniciales de PostgreSQL para incluir los mismos seis blueprints definidos originalmente en el mock del frontend, así los datos mostrados son los mismos que se tenían cuando la aplicación utilizaba datos mockeados.
+
+**Frontend:**
+
+* **`docker-compose.yml`**: se configuró el frontend para comunicarse con el backend mediante Docker. Se estableció el backend en el puerto `8080` y el frontend en el puerto `5173`.
+
+* En la configuración de Docker se estableció:
+
+```yaml
+VITE_USE_MOCK: "false"
+VITE_API_BASE_URL: "http://localhost:8080"
+```
+
+Esto hace que el frontend deje de utilizar `apiMock.js` y utilice `apiClient.js` para realizar las peticiones HTTP al backend real.
+
+* **`Dockerfile`**: se modificó para utilizar una construcción de múltiples etapas. Primero se construye la aplicación de React/Vite y posteriormente se sirve la aplicación compilada utilizando `serve` en el puerto `4173`, que se expone externamente mediante el puerto `5173`.
+
+* **`apiClient.js`**: este archivo ya contenía la lógica necesaria para comunicarse con el backend mediante Axios. Se utiliza para realizar las operaciones sobre los blueprints y para enviar las credenciales al endpoint `/auth/login`. También agrega automáticamente el token JWT en las peticiones que requieren autenticación.
+
+De esta forma, después de correr el siguiente comando desde el front, se ven los siguientes cambios: 
+
+```bash
+docker compose --build
+```
+
+![connection-before](/src/img/connection-before.png)
+
+Acá es posible identificar la conexión exitosa entre el back y el front, pues gracias a la **implementación de seguridad** y el uso de access tokens, el usuario no puede acceder a los blueprints hasta que inicie sesión, tal como se señala en el recuadro rojo con su texto de advertencia. 
+
+Ahora bien, una vez se inicia sesión con las credenciales
+
+**usuario**: student
+
+**contraseña**: student123 
+
+es posible acceder a los blueprints de otros usuarios por ejemplo, tal como aparece en la siguiente imagen. 
+
+![connection-after](/src/img/connection-after.png)
+
+Acá es posible ver como se ven los mismos blueprints de prueba (SEEDS) que se estaban usando previamente solo en el front ahora también aplican para el back, por lo que se muestran usuarios como angela, samuel, entre otros. 
+
+---
 **Nota**: debido a la falta de conocimiento en el manejo de desarrollo en el Front-End, algunas partes de código fueron guiadas por Claude, así como la documentación de los cambios realizados para mayor entendimiento. 
 
-
 --- 
-
-
